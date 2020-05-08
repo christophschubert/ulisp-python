@@ -1,7 +1,7 @@
 # Extension with user defined functions
 
 import parser
-from x86_compiler import emit, emit_prefix, emit_exit_syscall,  PARAM_REGISTERS
+from x86_compiler import emit, emit_prefix, emit_exit_syscall, PARAM_REGISTERS
 
 
 """
@@ -21,14 +21,12 @@ def compile_define(f_def, destination, scope):
 
     scope[name] = name.replace('-', '_')
 
-
     child_scope = scope.copy()
     emit(0, f'{scope[name]}:')
-    for i, param in enumerate(parameters):
-        local_reg = LOCAL_REGISTERS[i]
+    for param, param_reg, local_reg in zip(parameters, PARAM_REGISTERS, LOCAL_REGISTERS):
         emit(1, f'PUSH {local_reg}')
-        emit(1, f'MOV {local_reg}, {register}')
-        child_scope[param] = PARAM_REGISTERS[i]
+        emit(1, f'MOV {local_reg}, {param_reg}')
+        child_scope[param] = local_reg
 
     compile_expression(body[0], 'RAX', child_scope)
 
@@ -45,10 +43,9 @@ def compile_expression(arg, destination, scope):
     if isinstance(arg, list):
         compile_call(arg[0], arg[1:], destination, scope)
     elif scope.get(arg) or isinstance(arg, int):
-        p = scope.get(arg, arg)
-        emit(1, f'MOV {destination}, {p}')
+        emit(1, f'MOV {destination}, {scope.get(arg, arg)}')
     else:
-        pass # should exit with error
+        raise "referenced undef variable"
 
 
 def compile_call(fun, args, destination, scope):
@@ -64,7 +61,7 @@ def compile_call(fun, args, destination, scope):
     if valid_function:
         emit(1, f'CALL {valid_function}')
     else:
-        pass # should throw error!
+        raise "ERROR, unknown function " + fun
 
     for a, reg in list(zip(args, PARAM_REGISTERS))[::-1]:
         emit(1, 'POP ' + reg)
@@ -72,12 +69,15 @@ def compile_call(fun, args, destination, scope):
         emit(1, f'MOV {destination}, RAX')
 
 if __name__ == '__main__':
-    program = sys.argv[1] if len(sys.argv) > 1 else '(+ 3 (+ 1 2))'
-    ast = parser.parse(program)
-    emit_prefix()
-    compile_call(ast[0], ast[1:], 'RAX', {})
 
-    # the 'main' program
+    scope = {}
+    emit_prefix()
+    for line in sys.stdin:
+        ast = parser.parse(line)
+        compile_call(ast[0], ast[1:], 'RAX', scope)
+
+    # the '_main' program
+    emit(0, '_main:')
     emit(1, 'CALL main')
 
     emit_exit_syscall()

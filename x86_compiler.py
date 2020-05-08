@@ -29,4 +29,4 @@ def emit_prefix():
     emit(1, 'MOV RAX, RDI')
     emit(1, 'RET\n')
 
-    emit(0, '_main:')
+    

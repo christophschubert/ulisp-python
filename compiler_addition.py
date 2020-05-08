@@ -42,5 +42,6 @@ if __name__ == '__main__':
     program = sys.argv[1] if len(sys.argv) > 1 else '(+ 3 (+ 1 2))'
     ast = parser.parse(program)
     emit_prefix()
+    emit(0, '_main:')
     compile_call(ast[0], ast[1:], None)
     emit_exit_syscall()
