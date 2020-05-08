@@ -15,17 +15,25 @@ import sys
 BUILDIN_FUNCTIONS = { '+': 'plus'}
 
 def compile_define(f_def, destination, scope):
+    LOCAL_REGISTERS = ['RBX', 'RBP', 'R12']
+
     name, parameters, *body = f_def
 
     scope[name] = name.replace('-', '_')
 
-    # TODO: properly deal with child_scope:
+
     child_scope = scope.copy()
     emit(0, f'{scope[name]}:')
     for i, param in enumerate(parameters):
+        local_reg = LOCAL_REGISTERS[i]
+        emit(1, f'PUSH {local_reg}')
+        emit(1, f'MOV {local_reg}, {register}')
         child_scope[param] = PARAM_REGISTERS[i]
 
     compile_expression(body[0], 'RAX', child_scope)
+
+    for a, reg in list(zip(parameters, LOCAL_REGISTERS))[::-1]:
+        emit(1, 'POP ' + reg)
 
     emit(1, 'RET\n')
 
