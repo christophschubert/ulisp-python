@@ -1,15 +1,18 @@
+# Compile S expressions involving '+' as function symbol and integer arguments into
+# x86 assembler.
+#
+# Sample usage:
+# python compiler_addition '(+ 3 (+ 1 (+ 4 2)))' > program.S
+# gcc -mstackrealign -masm=intel -o program program.S
+# ./program
+# echo $?
+
 
 import sys
 
 import parser
+from x86_compiler import emit, emit_prefix, emit_exit_syscall, PARAM_REGISTERS
 
-SYSCALL_MAP = {
-    'exit': '0x2000001' if sys.platform == 'darwin' else '60'
-}
-
-
-def emit(depth, code):
-    print("   " * depth + code)
 
 def compile_argument(arg, destination):
     if isinstance(arg, list):
@@ -18,7 +21,6 @@ def compile_argument(arg, destination):
     emit(1, "MOV {}, {}".format(destination, arg))
 
 BUILDIN_FUNCTIONS = { '+': 'plus'}
-PARAM_REGISTERS = ['RDI', 'RSI', 'RDX']
 
 def compile_call(fun, args, destination):
     for a, reg in zip(args, PARAM_REGISTERS):
@@ -32,22 +34,7 @@ def compile_call(fun, args, destination):
         emit(1, 'MOV {}, RAX'.format(destination))
     emit(0, '')
 
-def emit_prefix():
-    emit(1, '.global _main\n')
-    emit(1, '.text\n')
 
-    emit(0, 'plus:')
-    emit(1, 'ADD RDI, RSI')
-    emit(1, 'MOV RAX, RDI')
-    emit(1, 'RET\n')
-
-    emit(0, '_main:')
-
-
-def emit_postfix():
-    emit(1, 'MOV RDI, RAX')
-    emit(1, 'MOV RAX, {}'.format(SYSCALL_MAP['exit']))
-    emit(1, 'SYSCALL')
 
 
 
@@ -56,4 +43,4 @@ if __name__ == '__main__':
     ast = parser.parse(program)
     emit_prefix()
     compile_call(ast[0], ast[1:], None)
-    emit_postfix()
+    emit_exit_syscall()
